@@ -1,0 +1,8 @@
+﻿# Ignore node_modules
+**/node_modules
+
+# Ignore any zip files
+*.zip
+
+# Ignore config files
+**/config.js

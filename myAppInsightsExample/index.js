@@ -24,10 +24,8 @@ appInsights.defaultClient.addTelemetryProcessor(envelope => {
  * Will succeed with the response body.
  */
 exports.handler = (event, context, callback) => {
-    var body = JSON.parse(event.body);
-    console.log('My provided body',body);
-    var myCode = escape(body.code);
-    var myName = body.name;
+    var myCode = escape(event.code);
+    var myName = event.name;
     var params = {
                     host: "az-forwarder.azurewebsites.net",
                     path: "/api/HttpTrigger1?code="+ myCode +"&name="+myName,
@@ -47,13 +45,13 @@ exports.handler = (event, context, callback) => {
             if (res.headers['content-type'] === 'application/json') {
                 body = JSON.parse(body);
             }
-            console.log('Answer from Azure Function',body);
             //callback(null, JSON.stringify(body));
             let client = appInsights.defaultClient;
     
             let customMetric = Math.random() * 50 + 50;
-            client.trackMetric({name: "AWS Test", value: customMetric});
-            client.trackEvent({ name: "Custom AWS event", properties: { customProperty: "my custom event" } });
+            client.trackMetric({name: "AWS Test", value: customMetric, tagOverrides:{"ai.operation.id": context.invocationId}});
+            client.trackEvent({ name: "Custom AWS event", properties: { customProperty: "my custom event" }, tagOverrides:{"ai.operation.id": context.invocationId} });
+            client.trackDependency({target:"http://dbname", name:"select customers proc", data:"SELECT * FROM Customers", duration:231, resultCode:0, success: true, dependencyTypeName: "ZSQL", tagOverrides:{"ai.operation.id": context.invocationId}});
             //format response in a way that AWS API Gateway can understand!
             const response = {"statusCode": 200, "body": JSON.stringify({"response":"from AWS Lambda :-)"}),
                 "isBase64Encoded": false };
@@ -63,7 +61,7 @@ exports.handler = (event, context, callback) => {
         });
     });
     req.on('error', callback);
-    req.write("{'mydata': 'from AWS'}");
+    req.write("{'data': 'from AWS'}");
     req.end();
     
 };

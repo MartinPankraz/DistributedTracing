@@ -15,10 +15,16 @@ function wrapHandler(name, origHandler) {
     const Util = require('applicationinsights/out/Library/Util');
 
     const wrappedHandler = (origEvent, origContext, origCallback) => {
+        //console.log(">>>>> " + JSON.stringify(origEvent));
         const startTime = new Date(); // Used to calculate duration
-        const operationId = Util.w3cTraceId();
-        const requestId = '|' + operationId + '.0';
-
+        /*const operationId = Util.w3cTraceId();
+        const requestId = '|' + operationId + '.0';*/
+        const ajaxData = origEvent.headers["traceparent"].split("-");//${self.version}-${self.traceId}-${self.spanId}-${self.traceFlag}
+        const operationId = ajaxData[1];
+        const spanID = ajaxData[2];
+        const traceFlag = ajaxData[3];
+        const requestId = "|" + operationId + "." + spanID + ".";// + traceFlag;
+        console.log(">>>>> " + requestId);
         // Wrap callback with request and exception telemetry
         const wrappedCallback = (error, response) => {
             const duration = new Date().getTime() - startTime.getTime();
@@ -64,8 +70,12 @@ function wrapHandler(name, origHandler) {
  * Will succeed with the response body.
  */
 exports.handler = wrapHandler("MyFunction", (event, context, callback) => {
-    var myCode = escape(event.code);
-    var myName = event.name;
+    //console.log("!!!start:"+JSON.stringify(event));
+    //callback(null, "This message header was processed by Amazon " +event.headers["traceparent"]);
+    var myBody = event.body;
+    var myCode = myBody.code;//escape(myBody.code);
+    
+    var myName = myBody.name;
     var params = {
                     host: "az-forwarder.azurewebsites.net",
                     path: "/api/HttpTrigger1?code="+ myCode +"&name="+myName,
@@ -81,10 +91,11 @@ exports.handler = wrapHandler("MyFunction", (event, context, callback) => {
         res.on('end', () => {
             console.log('Successfully processed HTTPS response');
             // If we know it's JSON, parse it
-            if (res.headers['content-type'] === 'application/json') {
+            /*if (res.headers['content-type'] === 'application/json') {
                 body = JSON.parse(body);
-            }
-            callback(null, JSON.stringify(body));
+            }*/
+            
+            callback(null, JSON.parse(body));//JSON.stringify(body));
         });
     });
     req.on('error', callback);
